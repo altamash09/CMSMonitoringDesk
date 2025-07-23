@@ -1,0 +1,8 @@
+.vs/
+*.vsidx
+*.user
+*.suo
+*.cache
+*.log
+*.tmp
+node_modules/
