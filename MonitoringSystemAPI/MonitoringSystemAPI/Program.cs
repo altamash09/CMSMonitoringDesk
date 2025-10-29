@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using RabbitMQ.Client;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using MonitoringAPI.Services;
 using MonitoringAPI.Hubs;
 using MonitoringAPI.Data;
@@ -13,9 +15,54 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database Context - using connection string only
+// Database Context
 builder.Services.AddDbContext<MonitoringDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// JWT Authentication Configuration
+var jwtSettings = builder.Configuration.GetSection("JWT");
+var secretKey = jwtSettings["SecretKey"] ?? "YourSecretKeyHere_MakeItLongAndSecure_AtLeast32Characters";
+var key = Encoding.ASCII.GetBytes(secretKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // Set to true in production
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "MonitoringAPI",
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"] ?? "MonitoringClients",
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+
+    // Configure JWT for SignalR
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/monitoringhub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // SignalR
 builder.Services.AddSignalR();
@@ -28,8 +75,12 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:3000",
                 "https://localhost:3000",
-                "http://localhost:3001",    
-                "https://localhost:3001"
+                "http://localhost:3001",
+                "https://localhost:3001",
+                "http://localhost:3002",
+                "http://localhost:3002",
+                "http://10.144.69.61",
+                "https://10.144.69.61"
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -45,24 +96,6 @@ builder.Services.AddScoped<ISLAService, SLAService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 
-// RabbitMQ Configuration - Using the correct interface
-builder.Services.AddSingleton<IConnectionFactory>(sp =>
-{
-    var configuration = sp.GetService<IConfiguration>();
-    return new ConnectionFactory()
-    {
-        HostName = configuration["RabbitMQ:HostName"] ?? "localhost",
-        Port = int.Parse(configuration["RabbitMQ:Port"] ?? "15672"),
-        UserName = configuration["RabbitMQ:UserName"] ?? "guest",
-        Password = configuration["RabbitMQ:Password"] ?? "guest",
-        VirtualHost = configuration["RabbitMQ:VirtualHost"] ?? "/"
-    };
-});
-
-// Background Services
-builder.Services.AddHostedService<MonitoringAPI.BackgroundServices.RabbitMQConsumerService>();
-builder.Services.AddHostedService<MonitoringAPI.BackgroundServices.SqlServiceBrokerService>();
-
 // Logging
 builder.Services.AddLogging();
 
@@ -76,6 +109,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Log requests before CORS policy
+app.Use(async (context, next) =>
+{
+    var origin = context.Request.Headers["Origin"].ToString();
+    var path = context.Request.Path;
+    var method = context.Request.Method;
+
+    Console.WriteLine($"[CORS Check] Origin: {origin} | Path: {path} | Method: {method}");
+
+    await next();
+});
+
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
@@ -83,5 +129,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<MonitoringHub>("/monitoringhub");
+
+Console.WriteLine("=== Monitoring API Starting ===");
+Console.WriteLine($"Environment: {app.Environment.EnvironmentName}");
 
 app.Run();

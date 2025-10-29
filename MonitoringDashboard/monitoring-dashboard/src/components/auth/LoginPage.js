@@ -31,7 +31,10 @@ const LoginPage = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
+
+    console.log("API URL:", process.env.REACT_APP_API_URL);
+
+
     try {
       const result = await login(formData.username, formData.password);
       if (result.success) {

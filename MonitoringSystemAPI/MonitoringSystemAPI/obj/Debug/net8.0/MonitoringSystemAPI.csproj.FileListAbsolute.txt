@@ -1,10 +1,3 @@
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.csproj.AssemblyReference.cache
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.GeneratedMSBuildEditorConfig.editorconfig
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.AssemblyInfoInputs.cache
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.AssemblyInfo.cs
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.csproj.CoreCompileInputs.cache
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.MvcApplicationPartsAssemblyInfo.cs
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.MvcApplicationPartsAssemblyInfo.cache
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\appsettings.Development.json
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\appsettings.json
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\MonitoringSystemAPI.staticwebassets.endpoints.json
@@ -16,6 +9,7 @@ D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Azure.Core.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Azure.Identity.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Humanizer.dll
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Microsoft.AspNetCore.OpenApi.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\Microsoft.Bcl.Cryptography.dll
@@ -156,6 +150,14 @@ D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\runtimes\win\lib\net8.0\System.Security.Cryptography.Pkcs.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\bin\Debug\net8.0\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.csproj.AssemblyReference.cache
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.GeneratedMSBuildEditorConfig.editorconfig
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.AssemblyInfoInputs.cache
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.AssemblyInfo.cs
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.csproj.CoreCompileInputs.cache
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.MvcApplicationPartsAssemblyInfo.cs
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.MvcApplicationPartsAssemblyInfo.cache
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.sourcelink.json
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\scopedcss\bundle\MonitoringSystemAPI.styles.css
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets.build.json
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets.development.json
@@ -166,10 +168,10 @@ D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.MonitoringSystemAPI.props
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.MonitoringSystemAPI.props
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets.pack.json
-D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\Monitori.EAAD9CE0.Up2Date
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\refint\MonitoringSystemAPI.dll
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.pdb
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\MonitoringSystemAPI.genruntimeconfig.cache
 D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\ref\MonitoringSystemAPI.dll
+D:\Altamash Shaikh\Altamash Shaikh\React\MonitoringSystemAPI\MonitoringSystemAPI\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

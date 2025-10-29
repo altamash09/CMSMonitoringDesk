@@ -15,8 +15,8 @@ namespace MonitoringAPI.BackgroundServices
         private readonly ILogger<RabbitMQConsumerService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionFactory _connectionFactory;
-        private IConnection _connection;
-        private IChannel _channel;
+        private IConnection? _connection;
+        private IModel? _channel;
 
         public RabbitMQConsumerService(
             ILogger<RabbitMQConsumerService> logger,
@@ -34,16 +34,16 @@ namespace MonitoringAPI.BackgroundServices
 
             try
             {
-                _connection = await _connectionFactory.CreateConnectionAsync();
-                _channel = await _connection.CreateChannelAsync();
+                _connection = _connectionFactory.CreateConnection();
+                _channel = _connection.CreateModel();
 
                 // Declare queues
-                await _channel.QueueDeclareAsync(queue: "user_status_updates", durable: true, exclusive: false, autoDelete: false);
-                await _channel.QueueDeclareAsync(queue: "monitoring_updates", durable: true, exclusive: false, autoDelete: false);
+                _channel.QueueDeclare(queue: "user_status_updates", durable: true, exclusive: false, autoDelete: false);
+                _channel.QueueDeclare(queue: "monitoring_updates", durable: true, exclusive: false, autoDelete: false);
 
                 // Set up consumers
-                await SetupUserStatusConsumer();
-                await SetupMonitoringConsumer();
+                SetupUserStatusConsumer();
+                SetupMonitoringConsumer();
 
                 _logger.LogInformation("RabbitMQ Consumer Service started successfully");
 
@@ -55,14 +55,16 @@ namespace MonitoringAPI.BackgroundServices
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in RabbitMQ Consumer Service");
+                _logger.LogError(ex, "Error in RabbitMQ Consumer Service - RabbitMQ may not be available");
             }
         }
 
-        private async Task SetupUserStatusConsumer()
+        private void SetupUserStatusConsumer()
         {
-            var consumer = new AsyncEventingBasicConsumer(_channel);
-            consumer.ReceivedAsync += async (model, ea) =>
+            if (_channel == null) return;
+
+            var consumer = new EventingBasicConsumer(_channel);
+            consumer.Received += async (model, ea) =>
             {
                 try
                 {
@@ -70,54 +72,62 @@ namespace MonitoringAPI.BackgroundServices
                     var message = Encoding.UTF8.GetString(body);
                     var userStatusMessage = JsonSerializer.Deserialize<UserStatusMessage>(message);
 
-                    _logger.LogInformation($"Received user status update: {userStatusMessage.UserName} - {userStatusMessage.Status}");
-
-                    // Process the message
-                    using var scope = _serviceProvider.CreateScope();
-                    var agentService = scope.ServiceProvider.GetRequiredService<IAgentService>();
-                    var reviewerService = scope.ServiceProvider.GetRequiredService<IReviewerService>();
-                    var notificationService = scope.ServiceProvider.GetRequiredService<ISignalRNotificationService>();
-
-                    // Update user status in database
-                    if (userStatusMessage.UserType.Equals("Agent", StringComparison.OrdinalIgnoreCase))
+                    if (userStatusMessage != null)
                     {
-                        await agentService.UpdateAgentStatusAsync(userStatusMessage.UserId, userStatusMessage.Status);
+                        _logger.LogInformation($"Received user status update: {userStatusMessage.UserName} - {userStatusMessage.Status}");
+
+                        // Process the message
+                        using var scope = _serviceProvider.CreateScope();
+                        var agentService = scope.ServiceProvider.GetService<IAgentService>();
+                        var reviewerService = scope.ServiceProvider.GetService<IReviewerService>();
+                        var notificationService = scope.ServiceProvider.GetService<ISignalRNotificationService>();
+
+                        if (agentService != null && reviewerService != null && notificationService != null)
+                        {
+                            // Update user status in database
+                            if (userStatusMessage.UserType.Equals("Agent", StringComparison.OrdinalIgnoreCase))
+                            {
+                                await agentService.UpdateAgentStatusAsync(userStatusMessage.UserId, userStatusMessage.Status);
+                            }
+                            else if (userStatusMessage.UserType.Equals("Reviewer", StringComparison.OrdinalIgnoreCase))
+                            {
+                                await reviewerService.UpdateReviewerStatusAsync(userStatusMessage.UserId, userStatusMessage.Status);
+                            }
+
+                            // Send real-time update to clients
+                            var statusUpdate = new UserStatusUpdateDto
+                            {
+                                UserId = userStatusMessage.UserId,
+                                UserType = userStatusMessage.UserType,
+                                Status = userStatusMessage.Status,
+                                Timestamp = DateTime.UtcNow
+                            };
+
+                            await notificationService.SendUserStatusUpdate(statusUpdate);
+                        }
                     }
-                    else if (userStatusMessage.UserType.Equals("Reviewer", StringComparison.OrdinalIgnoreCase))
-                    {
-                        await reviewerService.UpdateReviewerStatusAsync(userStatusMessage.UserId, userStatusMessage.Status);
-                    }
-
-                    // Send real-time update to clients
-                    var statusUpdate = new UserStatusUpdateDto
-                    {
-                        UserId = userStatusMessage.UserId,
-                        UserType = userStatusMessage.UserType,
-                        Status = userStatusMessage.Status,
-                        Timestamp = DateTime.UtcNow
-                    };
-
-                    await notificationService.SendUserStatusUpdate(statusUpdate);
 
                     // Acknowledge the message
-                    await _channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
+                    _channel?.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing user status message");
                     // Reject the message and don't requeue
-                    await _channel.BasicRejectAsync(deliveryTag: ea.DeliveryTag, requeue: false);
+                    _channel?.BasicReject(deliveryTag: ea.DeliveryTag, requeue: false);
                 }
             };
 
-            await _channel.BasicConsumeAsync(queue: "user_status_updates", autoAck: false, consumer: consumer);
+            _channel.BasicConsume(queue: "user_status_updates", autoAck: false, consumer: consumer);
             _logger.LogInformation("User status consumer set up successfully");
         }
 
-        private async Task SetupMonitoringConsumer()
+        private void SetupMonitoringConsumer()
         {
-            var consumer = new AsyncEventingBasicConsumer(_channel);
-            consumer.ReceivedAsync += async (model, ea) =>
+            if (_channel == null) return;
+
+            var consumer = new EventingBasicConsumer(_channel);
+            consumer.Received += async (model, ea) =>
             {
                 try
                 {
@@ -125,40 +135,54 @@ namespace MonitoringAPI.BackgroundServices
                     var message = Encoding.UTF8.GetString(body);
                     var rabbitMQMessage = JsonSerializer.Deserialize<RabbitMQMessage>(message);
 
-                    _logger.LogInformation($"Received monitoring message: {rabbitMQMessage.MessageType}");
-
-                    using var scope = _serviceProvider.CreateScope();
-                    var notificationService = scope.ServiceProvider.GetRequiredService<ISignalRNotificationService>();
-
-                    switch (rabbitMQMessage.MessageType?.ToLower())
+                    if (rabbitMQMessage != null)
                     {
-                        case "monitoring_update":
-                            var monitoringData = JsonSerializer.Deserialize<MonitoringUpdateDto>(rabbitMQMessage.Data.ToString());
-                            await notificationService.SendMonitoringUpdate(monitoringData);
-                            break;
+                        _logger.LogInformation($"Received monitoring message: {rabbitMQMessage.MessageType}");
 
-                        case "sla_update":
-                            var slaData = JsonSerializer.Deserialize<SLAUpdateDto>(rabbitMQMessage.Data.ToString());
-                            await notificationService.SendSLAUpdate(slaData);
-                            break;
+                        using var scope = _serviceProvider.CreateScope();
+                        var notificationService = scope.ServiceProvider.GetService<ISignalRNotificationService>();
 
-                        default:
-                            _logger.LogWarning($"Unknown message type: {rabbitMQMessage.MessageType}");
-                            break;
+                        if (notificationService != null)
+                        {
+                            switch (rabbitMQMessage.MessageType?.ToLower())
+                            {
+                                case "monitoring_update":
+                                    if (rabbitMQMessage.Data != null)
+                                    {
+                                        var monitoringData = JsonSerializer.Deserialize<MonitoringUpdateDto>(rabbitMQMessage.Data.ToString() ?? "{}");
+                                        if (monitoringData != null)
+                                            await notificationService.SendMonitoringUpdate(monitoringData);
+                                    }
+                                    break;
+
+                                case "sla_update":
+                                    if (rabbitMQMessage.Data != null)
+                                    {
+                                        var slaData = JsonSerializer.Deserialize<SLAUpdateDto>(rabbitMQMessage.Data.ToString() ?? "{}");
+                                        if (slaData != null)
+                                            await notificationService.SendSLAUpdate(slaData);
+                                    }
+                                    break;
+
+                                default:
+                                    _logger.LogWarning($"Unknown message type: {rabbitMQMessage.MessageType}");
+                                    break;
+                            }
+                        }
                     }
 
                     // Acknowledge the message
-                    await _channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
+                    _channel?.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing monitoring message");
                     // Reject the message and don't requeue
-                    await _channel.BasicRejectAsync(deliveryTag: ea.DeliveryTag, requeue: false);
+                    _channel?.BasicReject(deliveryTag: ea.DeliveryTag, requeue: false);
                 }
             };
 
-            await _channel.BasicConsumeAsync(queue: "monitoring_updates", autoAck: false, consumer: consumer);
+            _channel.BasicConsume(queue: "monitoring_updates", autoAck: false, consumer: consumer);
             _logger.LogInformation("Monitoring updates consumer set up successfully");
         }
 
@@ -166,8 +190,8 @@ namespace MonitoringAPI.BackgroundServices
         {
             try
             {
-                _channel?.CloseAsync();
-                _connection?.CloseAsync();
+                _channel?.Close();
+                _connection?.Close();
             }
             catch (Exception ex)
             {

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:7001/api';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,20 +18,33 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('auth-token');
       if (token) {
-        // Here you would validate token with your .NET Core API
-        // const response = await fetch('/api/auth/validate', {
-        //   headers: { Authorization: `Bearer ${token}` }
-        // });
+        // Validate token with your .NET Core API
+        const response = await fetch(`${API_BASE_URL}/auth/validate-token`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(token)
+        });
         
-        // For demo, simulate token validation
-        const userData = JSON.parse(localStorage.getItem('user-data') || '{}');
-        if (userData.username) {
-          setUser(userData);
-          setIsAuthenticated(true);
+        if (response.ok) {
+          const userData = JSON.parse(localStorage.getItem('user-data') || '{}');
+          if (userData.username) {
+            setUser(userData);
+            setIsAuthenticated(true);
+          }
+        } else {
+          // Token is invalid, clear it
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('user-data');
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+      // Clear invalid data
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('user-data');
     } finally {
       setIsLoading(false);
     }
@@ -37,46 +52,77 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      // Replace with actual API call to your .NET Core backend
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ username, password })
-      // });
+      setIsLoading(true);
       
-      // For demo purposes, simulate login
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          username, 
+          password,
+          rememberMe: false 
+        })
+      });
+  
+      const data = await response.json();
       
-      if (username && password) {
+      if (response.ok && data.success && data.data) {
+        // Parse permissions from JSON string to array
         const userData = {
-          id: 1,
-          username,
-          email: `${username}@company.com`,
-          role: 'admin',
-          permissions: ['dashboard', 'users', 'monitoring']
+          ...data.data.user,
+          permissions: JSON.parse(data.data.user.permissions || '[]')
         };
         
-        const token = 'demo-jwt-token-' + Date.now();
-        
-        localStorage.setItem('auth-token', token);
+        // Store token and user data
+        localStorage.setItem('auth-token', data.data.token);
         localStorage.setItem('user-data', JSON.stringify(userData));
         
         setUser(userData);
         setIsAuthenticated(true);
+        
+        console.log('Login successful:', userData);
         return { success: true };
       } else {
-        throw new Error('Invalid credentials');
+        const errorMessage = data.message || 'Invalid credentials';
+        console.error('Login failed:', errorMessage);
+        return { success: false, error: errorMessage };
       }
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        error: 'Connection failed. Please check if the API is running.' 
+      };
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth-token');
-    localStorage.removeItem('user-data');
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        // Call logout endpoint
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('user-data');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   const value = {

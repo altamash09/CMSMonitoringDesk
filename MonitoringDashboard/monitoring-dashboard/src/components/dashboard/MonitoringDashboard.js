@@ -16,9 +16,16 @@ const MonitoringDashboard = () => {
   
   // Use the dashboard data hook
   const { data, loading, error, lastUpdated, refreshData } = useDashboardData(selectedDate, isBacklog);
-  const { monitoringStats, hourlyData, agents, reviewers } = data;
+  
+  // Safely destructure with default values
+  const {
+    monitoringStats = {},
+    hourlyData = [],
+    agents = [],
+    reviewers = []
+  } = data || {};
 
-  // Fallback data structure (same as before for development/demo)
+  // Fallback data structure for development/demo
   const fallbackStats = {
     'Un-Monitored': { count: 45, color: 'from-red-100 to-red-200', mandatory: true },
     'Monitoring In Process': { count: 23, color: 'from-amber-100 to-yellow-200', mandatory: true },
@@ -33,9 +40,29 @@ const MonitoringDashboard = () => {
     'On-Holiday': { count: 15, color: 'from-indigo-100 to-indigo-200', mandatory: false }
   };
 
-  // Use API data or fallback data
-  const displayMonitoringStats = Object.keys(monitoringStats).length > 0 ? monitoringStats : fallbackStats;
-  const displayHourlyData = hourlyData.length > 0 ? hourlyData : Array.from({ length: 24 }, (_, i) => ({
+  const fallbackAgents = [
+    { id: 1, name: 'John Smith', status: 'online', completed: 45, estimatedHours: 8.5, actualHours: 7.2, rank: 'Diamond' },
+    { id: 2, name: 'Sarah Johnson', status: 'online', completed: 52, estimatedHours: 9.0, actualHours: 8.1, rank: 'Platinum' },
+    { id: 3, name: 'Mike Chen', status: 'idle', completed: 38, estimatedHours: 7.5, actualHours: 6.8, rank: 'Gold' },
+    { id: 4, name: 'Emma Davis', status: 'online', completed: 41, estimatedHours: 8.0, actualHours: 7.5, rank: 'Diamond' },
+    { id: 5, name: 'Alex Rodriguez', status: 'offline', completed: 29, estimatedHours: 6.5, actualHours: 5.9, rank: 'Silver' },
+    { id: 6, name: 'Lisa Wang', status: 'online', completed: 47, estimatedHours: 8.2, actualHours: 7.8, rank: 'Platinum' }
+  ];
+
+  const fallbackReviewers = [
+    { id: 1, name: 'Robert Wilson', status: 'online', completed: 28, estimatedHours: 6.5, actualHours: 5.8, rank: 'Diamond' },
+    { id: 2, name: 'Jennifer Lee', status: 'online', completed: 32, estimatedHours: 7.0, actualHours: 6.2, rank: 'Platinum' },
+    { id: 3, name: 'Mark Taylor', status: 'idle', completed: 25, estimatedHours: 6.0, actualHours: 5.5, rank: 'Gold' },
+    { id: 4, name: 'Sophie Anderson', status: 'online', completed: 30, estimatedHours: 6.8, actualHours: 6.0, rank: 'Gold' },
+    { id: 5, name: 'Chris Thompson', status: 'offline', completed: 18, estimatedHours: 5.0, actualHours: 4.2, rank: 'Bronze' },
+    { id: 6, name: 'Maya Patel', status: 'online', completed: 26, estimatedHours: 6.2, actualHours: 5.7, rank: 'Silver' }
+  ];
+
+  // Use API data or fallback data with null checks
+  const displayMonitoringStats = (monitoringStats && Object.keys(monitoringStats).length > 0) ? monitoringStats : fallbackStats;
+  const displayAgents = (agents && agents.length > 0) ? agents : fallbackAgents;
+  const displayReviewers = (reviewers && reviewers.length > 0) ? reviewers : fallbackReviewers;
+  const displayHourlyData = (hourlyData && hourlyData.length > 0) ? hourlyData : Array.from({ length: 24 }, (_, i) => ({
     hour: i.toString().padStart(2, '0'),
     completed: Math.floor(Math.random() * 50) + 10,
     percentage: Math.floor(Math.random() * 30) + 75
@@ -59,20 +86,20 @@ const MonitoringDashboard = () => {
     await refreshData();
   };
 
-  // Calculate agent stats
+  // Calculate agent stats with null safety
   const agentStats = {
-    total: agents.length,
-    online: agents.filter(a => a.status === 'online').length,
-    idle: agents.filter(a => a.status === 'idle').length,
-    offline: agents.filter(a => a.status === 'offline').length
+    total: displayAgents.length,
+    online: displayAgents.filter(a => a.status === 'online').length,
+    idle: displayAgents.filter(a => a.status === 'idle').length,
+    offline: displayAgents.filter(a => a.status === 'offline').length
   };
 
-  // Calculate reviewer stats
+  // Calculate reviewer stats with null safety
   const reviewerStats = {
-    total: reviewers.length,
-    online: reviewers.filter(r => r.status === 'online').length,
-    idle: reviewers.filter(r => r.status === 'idle').length,
-    offline: reviewers.filter(r => r.status === 'offline').length
+    total: displayReviewers.length,
+    online: displayReviewers.filter(r => r.status === 'online').length,
+    idle: displayReviewers.filter(r => r.status === 'idle').length,
+    offline: displayReviewers.filter(r => r.status === 'offline').length
   };
 
   const getStatusColor = (status) => {
@@ -266,7 +293,7 @@ const MonitoringDashboard = () => {
           </h2>
           <div className="h-[calc(100%-60px)]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyData}>
+              <BarChart data={displayHourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
                 <XAxis 
                   dataKey="hour" 
@@ -342,8 +369,8 @@ const MonitoringDashboard = () => {
             scrollbarColor: '#cbd5e1 #f1f5f9'
           }}>
             <div className="space-y-1.5">
-              {agents.length > 0 ? agents.map((agent, index) => (
-                <div key={index} className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-2.5 border border-gray-200 shadow-sm hover:shadow-md hover:from-gray-50 hover:to-white transition-all duration-300">
+              {displayAgents.map((agent, index) => (
+                <div key={agent.id || index} className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-2.5 border border-gray-200 shadow-sm hover:shadow-md hover:from-gray-50 hover:to-white transition-all duration-300">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <div className={`flex items-center gap-1 ${getStatusColor(agent.status)}`}>
@@ -365,7 +392,7 @@ const MonitoringDashboard = () => {
                     </div>
                   </div>
                 </div>
-              )) : null}
+              ))}
             </div>
           </div>
         </div>
@@ -402,8 +429,8 @@ const MonitoringDashboard = () => {
             scrollbarColor: '#cbd5e1 #f1f5f9'
           }}>
             <div className="space-y-1.5">
-              {reviewers.length > 0 ? reviewers.map((reviewer, index) => (
-                <div key={index} className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-2.5 border border-gray-200 shadow-sm hover:shadow-md hover:from-gray-50 hover:to-white transition-all duration-300">
+              {displayReviewers.map((reviewer, index) => (
+                <div key={reviewer.id || index} className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-2.5 border border-gray-200 shadow-sm hover:shadow-md hover:from-gray-50 hover:to-white transition-all duration-300">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <div className={`flex items-center gap-1 ${getStatusColor(reviewer.status)}`}>
@@ -425,7 +452,7 @@ const MonitoringDashboard = () => {
                     </div>
                   </div>
                 </div>
-              )) : null}
+              ))}
             </div>
           </div>
         </div>
@@ -434,7 +461,7 @@ const MonitoringDashboard = () => {
       {/* Floating Navigation */}
       <FloatingNav />
     </div>
-  ); // Ensure this closing parenthesis is correctly placed
-}; // Closing the MonitoringDashboard component
+  );
+};
 
 export default MonitoringDashboard;

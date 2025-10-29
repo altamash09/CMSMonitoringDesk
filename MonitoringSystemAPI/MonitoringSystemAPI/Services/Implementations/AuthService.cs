@@ -1,6 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using MonitoringAPI.Models;
 using MonitoringAPI.Data;
 using MonitoringAPI.Services;
@@ -42,10 +46,14 @@ namespace MonitoringSystemAPI.Services.Implementations
 
                     if (isValid)
                     {
-                        // Generate JWT token (simplified - you'd use proper JWT library)
-                        var token = GenerateJwtToken(userId, username);
+                        var role = reader.IsDBNull("Role") ? "user" : reader.GetString("Role");
+                        var permissionsJson = reader.IsDBNull("Permissions") ? "[]" : reader.GetString("Permissions");
+
+                        // Generate JWT token with permissions
+                        var token = GenerateJwtToken(userId, username, email, role, permissionsJson);
 
                         // Update last login
+                        await reader.CloseAsync();
                         await UpdateLastLoginAsync(userId);
 
                         return new LoginResponseDto
@@ -57,7 +65,9 @@ namespace MonitoringSystemAPI.Services.Implementations
                             {
                                 Id = userId,
                                 Username = username,
-                                Email = email
+                                Email = email,
+                                Role = role,
+                                Permissions = permissionsJson
                             }
                         };
                     }
@@ -88,10 +98,26 @@ namespace MonitoringSystemAPI.Services.Implementations
         {
             try
             {
-                // Implement JWT token validation logic here
-                // For now, returning true as placeholder
-                await Task.CompletedTask;
-                return !string.IsNullOrEmpty(token);
+                var jwtSettings = _configuration.GetSection("JWT");
+                var secretKey = jwtSettings["SecretKey"] ?? "YourSecretKeyHere_MakeItLongAndSecure_AtLeast32Characters";
+                var key = Encoding.ASCII.GetBytes(secretKey);
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSettings["Issuer"] ?? "MonitoringAPI",
+                    ValidateAudience = true,
+                    ValidAudience = jwtSettings["Audience"] ?? "MonitoringClients",
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+
+                return validatedToken != null;
             }
             catch (Exception ex)
             {
@@ -114,12 +140,36 @@ namespace MonitoringSystemAPI.Services.Implementations
             }
         }
 
-        private string GenerateJwtToken(int userId, string username)
+        private string GenerateJwtToken(int userId, string username, string email, string role, string permissionsJson)
         {
-            // Simplified token generation - implement proper JWT token creation
-            var tokenData = $"{userId}:{username}:{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}";
-            var tokenBytes = System.Text.Encoding.UTF8.GetBytes(tokenData);
-            return Convert.ToBase64String(tokenBytes);
+            var jwtSettings = _configuration.GetSection("JWT");
+            var secretKey = jwtSettings["SecretKey"] ?? "YourSecretKeyHere_MakeItLongAndSecure_AtLeast32Characters";
+            var key = Encoding.ASCII.GetBytes(secretKey);
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Name, username),
+                new Claim(ClaimTypes.Email, email ?? ""),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("userId", userId.ToString()),
+                new Claim("username", username),
+                new Claim("permissions", permissionsJson)
+            };
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(int.Parse(jwtSettings["ExpirationMinutes"] ?? "480")),
+                Issuer = jwtSettings["Issuer"] ?? "MonitoringAPI",
+                Audience = jwtSettings["Audience"] ?? "MonitoringClients",
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
 
         private async Task UpdateLastLoginAsync(int userId)
@@ -131,7 +181,9 @@ namespace MonitoringSystemAPI.Services.Implementations
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.Add(new SqlParameter("@UserId", userId));
 
-                await _context.Database.OpenConnectionAsync();
+                if (_context.Database.GetDbConnection().State != ConnectionState.Open)
+                    await _context.Database.OpenConnectionAsync();
+
                 await command.ExecuteNonQueryAsync();
             }
             catch (Exception ex)

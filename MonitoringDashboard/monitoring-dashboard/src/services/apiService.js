@@ -1,5 +1,5 @@
 // src/services/apiService.js
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://localhost:7042/api';
 
 class ApiService {
   constructor() {
@@ -29,7 +29,16 @@ class ApiService {
       }
       
       if (!response.ok) {
+        // Try to get error message from response
         const errorData = await response.json().catch(() => ({}));
+        
+        if (response.status === 401) {
+          // Handle authentication error
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('user-data');
+          throw new Error('Authentication failed. Please login again.');
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
@@ -45,33 +54,66 @@ class ApiService {
     }
   }
 
+  // Test endpoints
+  async ping() {
+    return this.request('/test/ping');
+  }
+
+  async testAuth() {
+    return this.request('/test/auth-test');
+  }
+
+  async getSampleData() {
+    return this.request('/test/sample-data', { method: 'POST' });
+  }
+
   // Authentication endpoints
   async login(credentials) {
-    return this.request('/auth/login', {
+    const response = await this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
+    
+    // Store token if login successful
+    if (response.success && response.data && response.data.token) {
+      localStorage.setItem('auth-token', response.data.token);
+      localStorage.setItem('user-data', JSON.stringify(response.data.user));
+    }
+    
+    return response;
   }
 
   async logout() {
-    return this.request('/auth/logout', {
-      method: 'POST',
-    });
-  }
-
-  async refreshToken() {
-    return this.request('/auth/refresh-token', {
-      method: 'POST',
-    });
+    try {
+      await this.request('/auth/logout', {
+        method: 'POST',
+      });
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('user-data');
+    }
   }
 
   async validateToken() {
+    const token = localStorage.getItem('auth-token');
+    if (!token) return { success: false };
+
     return this.request('/auth/validate-token', {
-      method: 'GET',
+      method: 'POST',
+      body: JSON.stringify(token),
     });
   }
 
   // Dashboard endpoints
+  async getDashboardSummary(date = null, isBacklog = false) {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    if (isBacklog) params.append('isBacklog', 'true');
+    
+    return this.request(`/dashboard/summary?${params.toString()}`);
+  }
+
   async getMonitoringStats(date = null, isBacklog = false) {
     const params = new URLSearchParams();
     if (date) params.append('date', date);
@@ -80,117 +122,68 @@ class ApiService {
     return this.request(`/dashboard/monitoring-stats?${params.toString()}`);
   }
 
-  async getHourlyData(date = null) {
+  async getSLAData(date = null) {
     const params = new URLSearchParams();
     if (date) params.append('date', date);
     
-    return this.request(`/dashboard/hourly-data?${params.toString()}`);
+    return this.request(`/dashboard/sla-data?${params.toString()}`);
   }
 
   async getAgents() {
-    return this.request('/dashboard/agents');
+    return this.request('/agents');
   }
 
   async getReviewers() {
-    return this.request('/dashboard/reviewers');
+    return this.request('/reviewers');
   }
 
-  async getDashboardOverview() {
-    return this.request('/dashboard/overview');
+  // Agent Management
+  async getAgentById(id) {
+    return this.request(`/agents/${id}`);
   }
 
-  // User Management endpoints
-  async getUsers(page = 1, pageSize = 50, search = '', role = '', status = '') {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-      ...(search && { search }),
-      ...(role && { role }),
-      ...(status && { status }),
-    });
-    
-    return this.request(`/users?${params.toString()}`);
-  }
-
-  async getUserById(id) {
-    return this.request(`/users/${id}`);
-  }
-
-  async createUser(userData) {
-    return this.request('/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async updateUser(id, userData) {
-    return this.request(`/users/${id}`, {
+  async updateAgentStatus(id, status) {
+    return this.request(`/agents/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify(userData),
+      body: JSON.stringify(status),
     });
   }
 
-  async deleteUser(id) {
-    return this.request(`/users/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async updateUserStatus(id, status) {
-    return this.request(`/users/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
-  }
-
-  // Analytics endpoints
-  async getAnalyticsData(dateRange = '7d') {
-    return this.request(`/analytics?range=${dateRange}`);
-  }
-
-  // Reports endpoints
-  async getReports(type = 'all') {
-    return this.request(`/reports?type=${type}`);
-  }
-
-  async generateReport(reportConfig) {
-    return this.request('/reports/generate', {
-      method: 'POST',
-      body: JSON.stringify(reportConfig),
-    });
-  }
-
-  async downloadReport(reportId) {
-    return this.request(`/reports/${reportId}/download`);
-  }
-
-  // Notifications endpoints
-  async getNotifications(unreadOnly = false) {
-    const params = unreadOnly ? '?unreadOnly=true' : '';
-    return this.request(`/notifications${params}`);
-  }
-
-  async markNotificationRead(id) {
-    return this.request(`/notifications/${id}/read`, {
-      method: 'PATCH',
-    });
-  }
-
-  async markAllNotificationsRead() {
-    return this.request('/notifications/mark-all-read', {
-      method: 'PATCH',
-    });
-  }
-
-  // Settings endpoints
-  async getSettings() {
-    return this.request('/settings');
-  }
-
-  async updateSettings(settings) {
-    return this.request('/settings', {
+  async updateAgentPerformance(id, performanceData) {
+    return this.request(`/agents/${id}/performance`, {
       method: 'PUT',
-      body: JSON.stringify(settings),
+      body: JSON.stringify(performanceData),
+    });
+  }
+
+  // Reviewer Management
+  async getReviewerById(id) {
+    return this.request(`/reviewers/${id}`);
+  }
+
+  async updateReviewerStatus(id, status) {
+    return this.request(`/reviewers/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(status),
+    });
+  }
+
+  async updateReviewerPerformance(id, performanceData) {
+    return this.request(`/reviewers/${id}/performance`, {
+      method: 'PUT',
+      body: JSON.stringify(performanceData),
+    });
+  }
+
+  // SLA Management
+  async getCurrentSLAPercentage() {
+    return this.request('/sla/current-percentage');
+  }
+
+  async updateSLARecord(slaData) {
+    return this.request('/sla/update', {
+      method: 'PUT',
+      body: JSON.stringify(slaData),
     });
   }
 

@@ -456,5 +456,35 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "MonitoringSystemAPI.Controllers.TestController",
+    "Method": "AuthTest",
+    "RelativePath": "api/Test/auth-test",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "MonitoringSystemAPI.Controllers.TestController",
+    "Method": "Ping",
+    "RelativePath": "api/Test/ping",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "MonitoringSystemAPI.Controllers.TestController",
+    "Method": "GetSampleData",
+    "RelativePath": "api/Test/sample-data",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   }
 ]
